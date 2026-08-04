@@ -18,7 +18,10 @@
         </p>
         <div class="hero-actions">
             <a href="{{ url_for('register') }}" class="btn-primary">Start tracking free</a>
+            {# Nothing to sign in to once a session exists. #}
+            {% if not session.user_id %}
             <a href="{{ url_for('login') }}" class="btn-ghost">Sign in</a>
+            {% endif %}
         </div>
     </div>
     <div class="hero-visual">
