@@ -8,7 +8,7 @@ import sqlite3
 from datetime import date
 from pathlib import Path
 
-from werkzeug.security import generate_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 # Anchored to the repo root via __file__ so the path holds regardless of CWD.
 DB_PATH = Path(__file__).resolve().parent.parent / "expense_tracker.db"
@@ -150,3 +150,18 @@ def create_user(name, email, password):
         return None
     finally:
         conn.close()
+
+
+def verify_user(email, password):
+    """Return the user row if the password matches, otherwise None.
+
+    Both failure modes — no such email and a wrong password — collapse to None
+    on purpose, so callers cannot accidentally tell a visitor which one it was.
+    Expects an already-normalised email, like get_user_by_email().
+    """
+    user = get_user_by_email(email)
+    if user is None:
+        return None
+    if not check_password_hash(user["password_hash"], password):
+        return None
+    return user
