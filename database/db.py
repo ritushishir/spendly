@@ -110,3 +110,43 @@ def seed_db():
         return True
     finally:
         conn.close()
+
+
+# ------------------------------------------------------------------ #
+# Users                                                               #
+# ------------------------------------------------------------------ #
+
+def get_user_by_email(email):
+    """Return the user row for an email, or None if no account has it.
+
+    Expects an already-normalised email (stripped and lowercased) — the
+    caller owns normalisation so there is one place that defines it.
+    """
+    conn = get_db()
+    try:
+        return conn.execute(
+            "SELECT * FROM users WHERE email = ?", (email,)
+        ).fetchone()
+    finally:
+        conn.close()
+
+
+def create_user(name, email, password):
+    """Hash the password, insert the user, and return the new id.
+
+    Returns None if the email is already taken — the UNIQUE constraint is the
+    real backstop, so the IntegrityError is caught here rather than escaping to
+    the route. Expects an already-normalised email, like get_user_by_email().
+    """
+    conn = get_db()
+    try:
+        cursor = conn.execute(
+            "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
+            (name, email, generate_password_hash(password)),
+        )
+        conn.commit()
+        return cursor.lastrowid
+    except sqlite3.IntegrityError:
+        return None
+    finally:
+        conn.close()

@@ -1,6 +1,6 @@
-from flask import Flask, render_template
+from flask import Flask, redirect, render_template, request, url_for
 
-from database.db import get_db, init_db, seed_db
+from database.db import create_user, get_user_by_email, init_db, seed_db
 
 app = Flask(__name__)
 
@@ -19,8 +19,41 @@ def landing():
     return render_template("landing.html")
 
 
-@app.route("/register")
+@app.route("/register", methods=["GET", "POST"])
 def register():
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        # Not stripped — leading/trailing spaces can be part of a real password.
+        password = request.form.get("password", "")
+
+        error = None
+        if not name:
+            error = "Please enter your name."
+        elif not email:
+            error = "Please enter your email address."
+        elif "@" not in email:
+            error = "Please enter a valid email address."
+        elif not password.strip():
+            error = "Please enter a password."
+        elif len(password) < 8:
+            error = "Password must be at least 8 characters."
+        elif get_user_by_email(email):
+            error = "An account with that email already exists."
+
+        if error is None:
+            # The UNIQUE constraint is the real guard; create_user() returns
+            # None if the check above lost a race with another signup.
+            if create_user(name, email, password) is None:
+                error = "An account with that email already exists."
+            else:
+                return redirect(url_for("login"))
+
+        # Same page, form still filled in — never echo the password back.
+        return render_template(
+            "register.html", error=error, name=name, email=email
+        )
+
     return render_template("register.html")
 
 
