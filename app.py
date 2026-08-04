@@ -1,11 +1,15 @@
 import os
+from datetime import datetime
 from functools import wraps
 
 from flask import Flask, redirect, render_template, request, session, url_for
 
 from database.db import (
     create_user,
+    get_category_totals_for_user,
+    get_expenses_for_user,
     get_user_by_email,
+    get_user_by_id,
     init_db,
     seed_db,
     verify_user,
@@ -135,102 +139,88 @@ def logout():
 
 
 # ------------------------------------------------------------------ #
-# Placeholder profile data                                            #
+# Profile display formatting                                          #
 # ------------------------------------------------------------------ #
-# Hardcoded on purpose: this step builds the profile layout only, so the
-# template can be validated before Step 5 replaces these three constants
-# with real queries. Amounts are pre-formatted strings — the grouping a
-# real total needs is a formatting concern, not part of the layout work.
+# The template prints these values as-is, so the shaping happens here and
+# the stored rows stay raw: amounts are REAL, dates plain ISO strings.
 
-PROFILE_USER = {
-    "initials": "DU",
-    "name": "Demo User",
-    "email": "demo@spendly.com",
-    "member_since": "01 August 2026",
-}
+def _initials(name):
+    """First and last initial, e.g. "Demo User" → "DU".
 
-PROFILE_STATS = [
-    {"label": "Total spent", "value": "₹4,295.25"},
-    {"label": "Transactions", "value": "8"},
-    {"label": "Top category", "value": "Bills"},
-]
+    A single-word name gives one letter; a blank one gives a placeholder
+    rather than an empty avatar.
+    """
+    parts = name.split()
+    if not parts:
+        return "?"
+    letters = parts[0][0] + (parts[-1][0] if len(parts) > 1 else "")
+    return letters.upper()
 
-# Mirrors the eight seeded expenses so the switch to real data in Step 5
-# should not change what this page looks like. Newest first.
-PROFILE_TRANSACTIONS = [
-    {
-        "date": "04 Aug 2026",
-        "description": "Lunch with a friend",
-        "category": "Food",
-        "amount": "185.75",
-    },
-    {
-        "date": "04 Aug 2026",
-        # A real expense may have no description; the template shows a dash.
-        "description": None,
-        "category": "Other",
-        "amount": "210.00",
-    },
-    {
-        "date": "03 Aug 2026",
-        "description": "Running shoes",
-        "category": "Shopping",
-        "amount": "1,250.00",
-    },
-    {
-        "date": "03 Aug 2026",
-        "description": "Streaming subscription",
-        "category": "Entertainment",
-        "amount": "299.00",
-    },
-    {
-        "date": "02 Aug 2026",
-        "description": "Pharmacy",
-        "category": "Health",
-        "amount": "450.00",
-    },
-    {
-        "date": "02 Aug 2026",
-        "description": "Metro card top-up",
-        "category": "Transport",
-        "amount": "80.00",
-    },
-    {
-        "date": "01 Aug 2026",
-        "description": "Electricity bill",
-        "category": "Bills",
-        "amount": "1,500.00",
-    },
-    {
-        "date": "01 Aug 2026",
-        "description": "Groceries",
-        "category": "Food",
-        "amount": "320.50",
-    },
-]
 
-# Same eight expenses grouped by category, largest first. Totals add up to
-# the "Total spent" stat above.
-PROFILE_BREAKDOWN = [
-    {"category": "Bills", "total": "1,500.00"},
-    {"category": "Shopping", "total": "1,250.00"},
-    {"category": "Food", "total": "506.25"},
-    {"category": "Health", "total": "450.00"},
-    {"category": "Entertainment", "total": "299.00"},
-    {"category": "Other", "total": "210.00"},
-    {"category": "Transport", "total": "80.00"},
-]
+def _rupees(amount):
+    """Format an amount with thousands separators and two decimals."""
+    return f"{amount:,.2f}"
+
+
+def _display_date(iso, fmt="%d %b %Y"):
+    """Reformat a stored date, or hand back the raw value if it can't parse.
+
+    Only the leading date is read, so both "2026-08-04" (expenses.date) and
+    "2026-08-04 09:15:22" (users.created_at) work.
+    """
+    try:
+        return datetime.strptime(iso[:10], "%Y-%m-%d").strftime(fmt)
+    except (TypeError, ValueError):
+        return iso
 
 
 @app.route("/profile")
 @login_required
 def profile():
+    user = get_user_by_id(session["user_id"])
+    if user is None:
+        # The signed-in account no longer exists — drop the stale session
+        # rather than rendering a page for a user we can't look up.
+        session.clear()
+        return redirect(url_for("login"))
+
+    expenses = get_expenses_for_user(user["id"])
+    totals = get_category_totals_for_user(user["id"])
+
     return render_template(
         "profile.html",
-        user=PROFILE_USER,
-        stats=PROFILE_STATS,
-        transactions=PROFILE_TRANSACTIONS,
-        breakdown=PROFILE_BREAKDOWN,
+        user={
+            "initials": _initials(user["name"]),
+            "name": user["name"],
+            "email": user["email"],
+            "member_since": _display_date(user["created_at"], "%d %B %Y"),
+        },
+        stats=[
+            {
+                "label": "Total spent",
+                "value": "₹" + _rupees(sum(row["total"] for row in totals)),
+            },
+            {"label": "Transactions", "value": str(len(expenses))},
+            {
+                # totals is ordered by total DESC, so the first row is the
+                # biggest. An account with no expenses has no top category.
+                "label": "Top category",
+                "value": totals[0]["category"] if totals else "—",
+            },
+        ],
+        transactions=[
+            {
+                "date": _display_date(expense["date"]),
+                "description": expense["description"],
+                "category": expense["category"],
+                "amount": _rupees(expense["amount"]),
+            }
+            for expense in expenses
+        ],
+        breakdown=[
+            {"category": row["category"], "total": _rupees(row["total"])}
+            for row in totals
+        ],
     )
 
 

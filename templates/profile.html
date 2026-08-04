@@ -37,6 +37,9 @@
             {# 3. Transaction history #}
             <div class="panel">
                 <h2 class="panel-title">Recent transactions</h2>
+                {% if not transactions %}
+                <p class="panel-empty">No expenses yet — your spending will show up here.</p>
+                {% else %}
                 <div class="table-scroll">
                     <table class="txn-table">
                         <thead>
@@ -62,11 +65,15 @@
                         </tbody>
                     </table>
                 </div>
+                {% endif %}
             </div>
 
             {# 4. Category breakdown #}
             <div class="panel">
                 <h2 class="panel-title">By category</h2>
+                {% if not breakdown %}
+                <p class="panel-empty">Nothing to break down yet.</p>
+                {% else %}
                 <ul class="breakdown-list">
                     {% for row in breakdown %}
                     <li class="breakdown-row">
@@ -75,6 +82,7 @@
                     </li>
                     {% endfor %}
                 </ul>
+                {% endif %}
             </div>
 
         </div>
