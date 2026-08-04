@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Profile — Spendly{% endblock %}
+
+{% block content %}
+
+<section class="profile-section">
+    <div class="profile-inner">
+
+        <div class="profile-head">
+            <h1 class="profile-title">Your profile</h1>
+            <p class="profile-subtitle">Your account and spending at a glance</p>
+        </div>
+
+        {# 1. User info card #}
+        <div class="user-card">
+            <span class="user-avatar">{{ user.initials }}</span>
+            <div class="user-meta">
+                <p class="user-name">{{ user.name }}</p>
+                <p class="user-email">{{ user.email }}</p>
+                <p class="user-since">Member since {{ user.member_since }}</p>
+            </div>
+        </div>
+
+        {# 2. Summary stats #}
+        <div class="stats-row">
+            {% for stat in stats %}
+            <div class="stat-card">
+                <span class="stat-label">{{ stat.label }}</span>
+                <span class="stat-value">{{ stat.value }}</span>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="profile-grid">
+
+            {# 3. Transaction history #}
+            <div class="panel">
+                <h2 class="panel-title">Recent transactions</h2>
+                <div class="table-scroll">
+                    <table class="txn-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Description</th>
+                                <th>Category</th>
+                                <th class="txn-amount">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for txn in transactions %}
+                            <tr>
+                                <td class="txn-date">{{ txn.date }}</td>
+                                <td>{{ txn.description or "—" }}</td>
+                                <td>
+                                    {# No stray whitespace inside the pill. #}
+                                    <span class="cat-badge cat-{{ txn.category|lower }}">{{ txn.category }}</span>
+                                </td>
+                                <td class="txn-amount">₹{{ txn.amount }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {# 4. Category breakdown #}
+            <div class="panel">
+                <h2 class="panel-title">By category</h2>
+                <ul class="breakdown-list">
+                    {% for row in breakdown %}
+                    <li class="breakdown-row">
+                        <span class="cat-badge cat-{{ row.category|lower }}">{{ row.category }}</span>
+                        <span class="breakdown-total">₹{{ row.total }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+        </div>
+
+    </div>
+</section>
+
+{% endblock %}
