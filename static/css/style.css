@@ -19,6 +19,16 @@
     --border: #e4e1da;
     --border-soft: #eeebe4;
 
+    /* Category badge tints, one per entry in db.CATEGORIES. Kept as tokens so
+       no rule carries a literal colour; all pair with --ink-soft text. */
+    --cat-food: #e6efe8;
+    --cat-transport: #e2ebf4;
+    --cat-bills: #fcefdc;
+    --cat-health: #fae5e3;
+    --cat-entertainment: #ece7f5;
+    --cat-shopping: #dcecea;
+    --cat-other: #ebe9e4;
+
     --font-display: 'DM Serif Display', Georgia, serif;
     --font-body: 'DM Sans', system-ui, sans-serif;
 
@@ -478,6 +488,229 @@ a { color: inherit; text-decoration: none; }
 .auth-switch a:hover { text-decoration: underline; }
 
 /* ------------------------------------------------------------------ */
+/* Profile                                                             */
+/* ------------------------------------------------------------------ */
+
+.profile-section { padding: 3rem 2rem 4rem; }
+
+.profile-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+}
+
+.profile-head { margin-bottom: 2rem; }
+
+.profile-title {
+    font-family: var(--font-display);
+    font-size: 2.25rem;
+    color: var(--ink);
+    margin-bottom: 0.25rem;
+}
+
+.profile-subtitle {
+    font-size: 0.9rem;
+    color: var(--ink-muted);
+}
+
+/* User info card ---------------------------------------------------- */
+
+.user-card {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    background: var(--paper-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.user-avatar {
+    flex-shrink: 0;
+    width: 3.5rem;
+    height: 3.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent-light);
+    color: var(--accent);
+    border-radius: 50%;
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    letter-spacing: 0.02em;
+}
+
+.user-meta { min-width: 0; }
+
+.user-name {
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    color: var(--ink);
+    line-height: 1.3;
+}
+
+.user-email {
+    font-size: 0.9rem;
+    color: var(--ink-muted);
+    /* Long addresses wrap instead of widening the card. */
+    overflow-wrap: anywhere;
+}
+
+.user-since {
+    font-size: 0.8rem;
+    color: var(--ink-faint);
+    margin-top: 0.35rem;
+}
+
+/* Summary stats ----------------------------------------------------- */
+
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-card {
+    background: var(--paper-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 1.25rem 1.5rem;
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 0.4rem;
+}
+
+.stat-value {
+    display: block;
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    color: var(--ink);
+    line-height: 1.2;
+}
+
+/* Panels ------------------------------------------------------------ */
+
+.profile-grid {
+    display: grid;
+    grid-template-columns: 1.7fr 1fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.panel {
+    background: var(--paper-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+}
+
+.panel-title {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 400;
+    color: var(--ink);
+    margin-bottom: 1rem;
+}
+
+/* Transaction table ------------------------------------------------- */
+
+/* The table scrolls inside the panel rather than widening the page. */
+.table-scroll { overflow-x: auto; }
+
+.txn-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.txn-table th {
+    text-align: left;
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    padding: 0 0.75rem 0.6rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.txn-table td {
+    padding: 0.8rem 0.75rem 0.8rem 0;
+    color: var(--ink-soft);
+    border-bottom: 1px solid var(--border-soft);
+}
+
+.txn-table tr:last-child td { border-bottom: none; }
+
+.txn-table th:last-child,
+.txn-table td:last-child { padding-right: 0; }
+
+.txn-date {
+    color: var(--ink-muted);
+    white-space: nowrap;
+}
+
+.txn-amount {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.txn-table td.txn-amount {
+    font-weight: 500;
+    color: var(--ink);
+}
+
+/* Category badges --------------------------------------------------- */
+
+.cat-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--ink-soft);
+    white-space: nowrap;
+}
+
+.cat-food { background: var(--cat-food); }
+.cat-transport { background: var(--cat-transport); }
+.cat-bills { background: var(--cat-bills); }
+.cat-health { background: var(--cat-health); }
+.cat-entertainment { background: var(--cat-entertainment); }
+.cat-shopping { background: var(--cat-shopping); }
+.cat-other { background: var(--cat-other); }
+
+/* Category breakdown ------------------------------------------------ */
+
+.breakdown-list { list-style: none; }
+
+.breakdown-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.7rem 0;
+    border-bottom: 1px solid var(--border-soft);
+}
+
+.breakdown-row:last-child { border-bottom: none; }
+
+.breakdown-total {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--ink);
+    white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ */
 /* Footer                                                              */
 /* ------------------------------------------------------------------ */
 
@@ -522,9 +755,21 @@ a { color: inherit; text-decoration: none; }
     .hero-visual { display: none; }
 
     .features-inner { grid-template-columns: 1fr; }
+
+    /* Breakdown drops below the table rather than squeezing beside it. */
+    .profile-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 600px) {
     .nav-links a:not(.nav-cta) { display: none; }
     .hero { padding: 3rem 1rem 2rem; }
+
+    .profile-section { padding: 2rem 1rem 3rem; }
+    .profile-title { font-size: 1.75rem; }
+
+    /* Three stat cards side by side get too narrow to read. */
+    .stats-row { grid-template-columns: 1fr; gap: 1rem; }
+    .stat-value { font-size: 1.5rem; }
+
+    .user-card, .panel { padding: 1.25rem; }
 }
