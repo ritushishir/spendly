@@ -1,8 +1,20 @@
-from flask import Flask, redirect, render_template, request, url_for
+import os
 
-from database.db import create_user, get_user_by_email, init_db, seed_db
+from flask import Flask, redirect, render_template, request, session, url_for
+
+from database.db import (
+    create_user,
+    get_user_by_email,
+    init_db,
+    seed_db,
+    verify_user,
+)
 
 app = Flask(__name__)
+
+# Signs the session cookie. The fallback keeps dev restarts from logging
+# everyone out; a real deployment must set SECRET_KEY in the environment.
+app.secret_key = os.environ.get("SECRET_KEY", "dev-only-not-for-production")
 
 # Make sure the schema and dev data exist before any route runs.
 with app.app_context():
@@ -57,19 +69,53 @@ def register():
     return render_template("register.html")
 
 
-@app.route("/login")
+@app.route("/login", methods=["GET", "POST"])
 def login():
+    if session.get("user_id"):
+        return redirect(url_for("profile"))
+
+    if request.method == "POST":
+        # Normalised the same way register does, or an account stored
+        # lowercased could never be matched.
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+
+        error = None
+        if not email:
+            error = "Please enter your email address."
+        elif not password.strip():
+            error = "Please enter your password."
+        else:
+            # Deliberately no length or "@" check here — an existing account
+            # may predate registration's rules (the seeded demo user's
+            # password is six characters) and must still be able to sign in.
+            user = verify_user(email, password)
+            if user is None:
+                # One message for both a wrong password and an unknown
+                # address, so the response never confirms an email exists.
+                error = "Incorrect email or password."
+            else:
+                session["user_id"] = user["id"]
+                session["user_name"] = user["name"]
+                return redirect(url_for("profile"))
+
+        # Same page, email still filled in — never echo the password back.
+        return render_template("login.html", error=error, email=email)
+
     return render_template("login.html")
+
+
+@app.route("/logout")
+def logout():
+    # clear() rather than popping single keys, so no stale session data
+    # survives. Harmless when nobody is signed in.
+    session.clear()
+    return redirect(url_for("landing"))
 
 
 # ------------------------------------------------------------------ #
 # Placeholder routes — students will implement these                  #
 # ------------------------------------------------------------------ #
-
-@app.route("/logout")
-def logout():
-    return "Logout — coming in Step 3"
-
 
 @app.route("/profile")
 def profile():
