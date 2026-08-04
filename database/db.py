@@ -131,6 +131,21 @@ def get_user_by_email(email):
         conn.close()
 
 
+def get_user_by_id(user_id):
+    """Return the user row for an id, or None if no such account exists.
+
+    A signed-in session holds only the id, so this is how a request turns that
+    id back into the user's own name, email and join date.
+    """
+    conn = get_db()
+    try:
+        return conn.execute(
+            "SELECT * FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+    finally:
+        conn.close()
+
+
 def create_user(name, email, password):
     """Hash the password, insert the user, and return the new id.
 
@@ -165,3 +180,45 @@ def verify_user(email, password):
     if not check_password_hash(user["password_hash"], password):
         return None
     return user
+
+
+# ------------------------------------------------------------------ #
+# Expenses                                                            #
+# ------------------------------------------------------------------ #
+
+def get_expenses_for_user(user_id):
+    """Return the user's expenses, newest first.
+
+    Every expense query filters on user_id — that filter is the only thing
+    keeping one account's spending out of another's page.
+    """
+    conn = get_db()
+    try:
+        return conn.execute(
+            "SELECT * FROM expenses WHERE user_id = ? "
+            # date has no time part, so id breaks ties in the order the rows
+            # were entered — newest entry of a shared day comes first.
+            "ORDER BY date DESC, id DESC",
+            (user_id,),
+        ).fetchall()
+    finally:
+        conn.close()
+
+
+def get_category_totals_for_user(user_id):
+    """Return (category, total) rows for the user, largest total first.
+
+    Only categories the user has actually spent in appear; category is the
+    tie-break so equal totals come back in a stable order.
+    """
+    conn = get_db()
+    try:
+        return conn.execute(
+            "SELECT category, SUM(amount) AS total FROM expenses "
+            "WHERE user_id = ? "
+            "GROUP BY category "
+            "ORDER BY total DESC, category ASC",
+            (user_id,),
+        ).fetchall()
+    finally:
+        conn.close()
