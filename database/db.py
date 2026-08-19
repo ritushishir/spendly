@@ -4,6 +4,7 @@ The only intended data-access layer for the app — routes talk to SQLite throug
 these helpers, never through their own connections.
 """
 
+import os
 import sqlite3
 from datetime import date
 from pathlib import Path
@@ -11,7 +12,13 @@ from pathlib import Path
 from werkzeug.security import check_password_hash, generate_password_hash
 
 # Anchored to the repo root via __file__ so the path holds regardless of CWD.
-DB_PATH = Path(__file__).resolve().parent.parent / "expense_tracker.db"
+# DB_PATH in the environment overrides it, which is what a deployment uses to
+# put the file on a mounted volume — a container's own filesystem is wiped on
+# every redeploy, so a default-path database there would lose its users.
+DB_PATH = Path(
+    os.environ.get("DB_PATH")
+    or Path(__file__).resolve().parent.parent / "expense_tracker.db"
+)
 
 # The fixed category vocabulary. Forms and summaries should import this rather
 # than repeating the strings.
