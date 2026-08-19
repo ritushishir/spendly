@@ -1,10 +1,13 @@
+import math
 import os
-from datetime import datetime
+from datetime import date, datetime
 from functools import wraps
 
 from flask import Flask, redirect, render_template, request, session, url_for
 
 from database.db import (
+    CATEGORIES,
+    create_expense,
     create_user,
     get_category_totals_for_user,
     get_expenses_for_user,
@@ -191,6 +194,39 @@ def _parse_date_arg(value):
     return value
 
 
+# Well past any plausible personal expense, and low enough that a mistyped
+# figure is caught rather than quietly skewing every total on the page.
+MAX_AMOUNT = 1_000_000
+
+
+def _parse_amount(value):
+    """Validate a submitted amount and return it as a positive, 2dp float.
+
+    Raises ValueError with a message meant to be shown to the user — the route
+    puts it straight into the form's error slot, so each rejection has to say
+    which of the rules it broke.
+
+    isfinite() is the reason float() alone isn't enough: it accepts "nan" and
+    "inf", and either one would poison every SUM() the profile page runs.
+    """
+    value = (value or "").strip()
+    if not value:
+        raise ValueError("Please enter an amount.")
+    try:
+        amount = float(value)
+    except ValueError:
+        raise ValueError("The amount must be a number, like 250.75.") from None
+    if not math.isfinite(amount):
+        raise ValueError("The amount must be a number, like 250.75.")
+    if amount <= 0:
+        raise ValueError("The amount must be greater than zero.")
+    if amount > MAX_AMOUNT:
+        raise ValueError(f"The amount can't be more than ₹{MAX_AMOUNT:,}.")
+    # Stored to the paisa; REAL would otherwise keep whatever precision the
+    # browser sent and the displayed total would not match the sum of the rows.
+    return round(amount, 2)
+
+
 def _range_label(start, end):
     """Describe the window currently applied, for display next to the figures.
 
@@ -294,13 +330,87 @@ def profile():
 
 
 # ------------------------------------------------------------------ #
-# Placeholder routes — students will implement these                  #
+# Expenses                                                            #
 # ------------------------------------------------------------------ #
 
-@app.route("/expenses/add")
+@app.route("/expenses/add", methods=["GET", "POST"])
+@login_required
 def add_expense():
-    return "Add expense — coming in Step 7"
+    if request.method == "POST":
+        # Kept as the raw submitted strings: they go back into the form when
+        # something is rejected, so nothing the user typed has to be retyped.
+        raw = {
+            "amount": request.form.get("amount", ""),
+            "category": request.form.get("category", ""),
+            "date": request.form.get("date", ""),
+            "description": request.form.get("description", ""),
+        }
+        category = raw["category"].strip()
+        # Blank becomes NULL rather than "", matching the seeded row so the
+        # table's `description or "—"` renders the dash.
+        description = raw["description"].strip() or None
 
+        error = None
+        amount = None
+        expense_date = None
+
+        try:
+            amount = _parse_amount(raw["amount"])
+        except ValueError as exc:
+            error = str(exc)
+
+        if error is None and category not in CATEGORIES:
+            # The <select> is a convenience, not a constraint — a hand-crafted
+            # POST can name any category at all, so the vocabulary is enforced
+            # here rather than trusted from the form.
+            error = "Please choose one of the listed categories."
+
+        if error is None:
+            try:
+                expense_date = _parse_date_arg(raw["date"])
+            except ValueError:
+                error = "Please enter a real date in YYYY-MM-DD form."
+            else:
+                # A missing bound is open-ended for the profile filter; here the
+                # date is a required field, so None is an error rather than a
+                # default of today.
+                if expense_date is None:
+                    error = "Please pick a date."
+                elif expense_date > date.today().isoformat():
+                    # Safe as a string compare — both sides are zero-padded ISO.
+                    error = "You can't record an expense dated in the future."
+
+        if error is None:
+            # user_id comes from the session, never from the form: there is no
+            # way for a request to name the account it writes to.
+            create_expense(
+                session["user_id"], amount, category, expense_date, description
+            )
+            # Redirect rather than render, so a refresh can't post it twice.
+            return redirect(url_for("profile"))
+
+        return render_template(
+            "add_expense.html", error=error, form=raw, categories=CATEGORIES
+        )
+
+    return render_template(
+        "add_expense.html",
+        form={
+            "amount": "",
+            "category": "",
+            # Today is the overwhelmingly common answer, and the field is
+            # required — an empty date input is a step the user always has to
+            # take otherwise.
+            "date": date.today().isoformat(),
+            "description": "",
+        },
+        categories=CATEGORIES,
+    )
+
+
+# ------------------------------------------------------------------ #
+# Placeholder routes — students will implement these                  #
+# ------------------------------------------------------------------ #
 
 @app.route("/expenses/<int:id>/edit")
 def edit_expense(id):

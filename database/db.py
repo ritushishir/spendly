@@ -260,3 +260,26 @@ def get_category_totals_for_user(user_id, start=None, end=None):
         ).fetchall()
     finally:
         conn.close()
+
+
+def create_expense(user_id, amount, category, date, description=None):
+    """Insert one expense for a user and return the new id.
+
+    Stores exactly what it is given — validating the amount, the category and
+    the date shape belongs to the route, which is the only layer that can put an
+    error in front of the person who typed it.
+
+    user_id must come from the signed-in session, never from a submitted form:
+    it is what keeps one account's spending out of another's page.
+    """
+    conn = get_db()
+    try:
+        cursor = conn.execute(
+            "INSERT INTO expenses (user_id, amount, category, date, description) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (user_id, amount, category, date, description),
+        )
+        conn.commit()
+        return cursor.lastrowid
+    finally:
+        conn.close()
