@@ -8,8 +8,11 @@
     <div class="profile-inner">
 
         <div class="profile-head">
-            <h1 class="profile-title">Your profile</h1>
-            <p class="profile-subtitle">Your account and spending at a glance</p>
+            <div>
+                <h1 class="profile-title">Your profile</h1>
+                <p class="profile-subtitle">Your account and spending at a glance</p>
+            </div>
+            <a href="{{ url_for('add_expense') }}" class="btn-primary">Add expense</a>
         </div>
 
         {# 1. User info card #}
@@ -65,7 +68,10 @@
                 {% if filters.active %}
                 <p class="panel-empty">No expenses in this range — try widening the dates.</p>
                 {% else %}
-                <p class="panel-empty">No expenses yet — your spending will show up here.</p>
+                <p class="panel-empty">
+                    No expenses yet —
+                    <a href="{{ url_for('add_expense') }}">add your first one</a>.
+                </p>
                 {% endif %}
                 {% else %}
                 <div class="table-scroll">
@@ -103,7 +109,10 @@
                 {% if filters.active %}
                 <p class="panel-empty">Nothing to break down in this range.</p>
                 {% else %}
-                <p class="panel-empty">Nothing to break down yet.</p>
+                <p class="panel-empty">
+                    Nothing to break down yet —
+                    <a href="{{ url_for('add_expense') }}">add an expense</a>.
+                </p>
                 {% endif %}
                 {% else %}
                 <ul class="breakdown-list">

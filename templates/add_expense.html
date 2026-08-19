@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Add expense — Spendly{% endblock %}
+
+{% block content %}
+
+<section class="expense-form-section">
+    <div class="expense-form-container">
+
+        <div class="expense-form-header">
+            <h1 class="expense-form-title">Add an expense</h1>
+            <p class="expense-form-subtitle">Record what you spent and where it went</p>
+        </div>
+
+        <div class="expense-form-card">
+            {% if error %}
+            <div class="auth-error">{{ error }}</div>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('add_expense') }}">
+                <div class="form-group">
+                    <label for="amount">Amount (₹)</label>
+                    <input type="number" id="amount" name="amount"
+                           class="form-input" placeholder="250.75"
+                           step="0.01" min="0.01"
+                           value="{{ form.amount }}"
+                           required autofocus>
+                </div>
+                <div class="form-group">
+                    <label for="category">Category</label>
+                    {# Options come from CATEGORIES via the route — the seven
+                       strings are never repeated here. #}
+                    <select id="category" name="category" class="form-select" required>
+                        <option value="" disabled {% if not form.category %}selected{% endif %}>
+                            Choose a category
+                        </option>
+                        {% for category in categories %}
+                        <option value="{{ category }}" {% if category == form.category %}selected{% endif %}>{{ category }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="date">Date</label>
+                    <input type="date" id="date" name="date"
+                           class="form-input"
+                           value="{{ form.date }}"
+                           required>
+                </div>
+                <div class="form-group">
+                    <label for="description">Description <span class="form-hint">optional</span></label>
+                    <input type="text" id="description" name="description"
+                           class="form-input" placeholder="Chai and samosas"
+                           value="{{ form.description }}">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-submit">Save expense</button>
+                    <a href="{{ url_for('profile') }}" class="btn-ghost">Cancel</a>
+                </div>
+            </form>
+        </div>
+
+    </div>
+</section>
+
+{% endblock %}
