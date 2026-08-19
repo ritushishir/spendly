@@ -32,13 +32,41 @@
             {% endfor %}
         </div>
 
+        {# 3. Date range filter — a GET form, so the filtered view lives in the
+           URL and survives a refresh or a bookmark. #}
+        <form class="filter-bar" method="get" action="{{ url_for('profile') }}">
+            {% if filter_error %}
+            <p class="filter-error">{{ filter_error }}</p>
+            {% endif %}
+            <div class="filter-fields">
+                <div class="filter-field">
+                    <label for="start">From</label>
+                    <input type="date" id="start" name="start" class="form-input" value="{{ filters.start }}">
+                </div>
+                <div class="filter-field">
+                    <label for="end">To</label>
+                    <input type="date" id="end" name="end" class="form-input" value="{{ filters.end }}">
+                </div>
+                <div class="filter-actions">
+                    <button type="submit" class="btn-primary">Apply</button>
+                    {% if filters.active %}
+                    <a href="{{ url_for('profile') }}" class="btn-ghost">Clear</a>
+                    {% endif %}
+                </div>
+            </div>
+        </form>
+
         <div class="profile-grid">
 
-            {# 3. Transaction history #}
+            {# 4. Transaction history #}
             <div class="panel">
-                <h2 class="panel-title">Recent transactions</h2>
+                <h2 class="panel-title">Recent transactions <span class="panel-range">{{ filters.label }}</span></h2>
                 {% if not transactions %}
+                {% if filters.active %}
+                <p class="panel-empty">No expenses in this range — try widening the dates.</p>
+                {% else %}
                 <p class="panel-empty">No expenses yet — your spending will show up here.</p>
+                {% endif %}
                 {% else %}
                 <div class="table-scroll">
                     <table class="txn-table">
@@ -68,11 +96,15 @@
                 {% endif %}
             </div>
 
-            {# 4. Category breakdown #}
+            {# 5. Category breakdown #}
             <div class="panel">
-                <h2 class="panel-title">By category</h2>
+                <h2 class="panel-title">By category <span class="panel-range">{{ filters.label }}</span></h2>
                 {% if not breakdown %}
+                {% if filters.active %}
+                <p class="panel-empty">Nothing to break down in this range.</p>
+                {% else %}
                 <p class="panel-empty">Nothing to break down yet.</p>
+                {% endif %}
                 {% else %}
                 <ul class="breakdown-list">
                     {% for row in breakdown %}

@@ -174,6 +174,38 @@ def _display_date(iso, fmt="%d %b %Y"):
         return iso
 
 
+def _parse_date_arg(value):
+    """Validate one YYYY-MM-DD query parameter and hand it back unchanged.
+
+    Returns None for a missing or blank parameter, which the queries read as an
+    open-ended bound rather than as "today" or "the beginning of time".
+
+    Raises ValueError on anything else. strptime is doing real work here, not
+    just shape-checking: it rejects impossible dates like 2026-02-31, so a typo
+    can never quietly widen the range instead of being reported.
+    """
+    if value is None or not value.strip():
+        return None
+    value = value.strip()
+    datetime.strptime(value, "%Y-%m-%d")
+    return value
+
+
+def _range_label(start, end):
+    """Describe the window currently applied, for display next to the figures.
+
+    Every number on the profile page depends on the range, so the range is
+    always named on screen — "All time" included.
+    """
+    if start and end:
+        return f"{_display_date(start)} – {_display_date(end)}"
+    if start:
+        return f"From {_display_date(start)}"
+    if end:
+        return f"Up to {_display_date(end)}"
+    return "All time"
+
+
 @app.route("/profile")
 @login_required
 def profile():
@@ -184,11 +216,48 @@ def profile():
         session.clear()
         return redirect(url_for("login"))
 
-    expenses = get_expenses_for_user(user["id"])
-    totals = get_category_totals_for_user(user["id"])
+    # Each bound is validated on its own, so one bad field doesn't throw away
+    # the other's perfectly good value when the form is redisplayed.
+    filter_error = None
+
+    try:
+        start = _parse_date_arg(request.args.get("start"))
+    except ValueError:
+        start = None
+        filter_error = "The “From” date must be a real date in YYYY-MM-DD form."
+
+    try:
+        end = _parse_date_arg(request.args.get("end"))
+    except ValueError:
+        end = None
+        filter_error = "The “To” date must be a real date in YYYY-MM-DD form."
+
+    if start and end and start > end:
+        # Safe as a string compare — both are zero-padded ISO by now.
+        filter_error = "The “From” date can't be after the “To” date."
+
+    # A rejected filter shows the unfiltered page plus the message, rather than
+    # an error page or an arbitrary guess at what was meant. start/end stay as
+    # parsed so the form can still redisplay what the user picked.
+    query_start = None if filter_error else start
+    query_end = None if filter_error else end
+
+    expenses = get_expenses_for_user(user["id"], query_start, query_end)
+    totals = get_category_totals_for_user(user["id"], query_start, query_end)
 
     return render_template(
         "profile.html",
+        filter_error=filter_error,
+        filters={
+            # "" rather than None: these go straight into a value= attribute.
+            "start": start or "",
+            "end": end or "",
+            # Drives the Clear link, and tells the panels which empty state to
+            # show — with no filter applied, an empty result means the account
+            # genuinely has no expenses, so no extra query is needed to know.
+            "active": bool(query_start or query_end),
+            "label": _range_label(query_start, query_end),
+        },
         user={
             "initials": _initials(user["name"]),
             "name": user["name"],

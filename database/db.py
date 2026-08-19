@@ -186,39 +186,70 @@ def verify_user(email, password):
 # Expenses                                                            #
 # ------------------------------------------------------------------ #
 
-def get_expenses_for_user(user_id):
+def _date_range_sql(start, end):
+    """Return (sql, params) narrowing a query to an inclusive date window.
+
+    Either bound may be None, which leaves that end open. Only whether a clause
+    exists is decided here — the dates themselves always travel as bound
+    parameters, so the returned SQL is safe to interpolate into a query even
+    though the values came from a user.
+
+    Works as a plain string comparison because expenses.date is zero-padded
+    ISO (YYYY-MM-DD), where lexicographic order is chronological order.
+    """
+    sql = ""
+    params = []
+    if start:
+        sql += " AND date >= ?"
+        params.append(start)
+    if end:
+        sql += " AND date <= ?"
+        params.append(end)
+    return sql, params
+
+
+def get_expenses_for_user(user_id, start=None, end=None):
     """Return the user's expenses, newest first.
 
+    start and end optionally restrict the result to a date window, inclusive at
+    both ends; omitting them returns everything.
+
     Every expense query filters on user_id — that filter is the only thing
-    keeping one account's spending out of another's page.
+    keeping one account's spending out of another's page. The date window is
+    appended to it, never a replacement for it.
     """
+    date_sql, date_params = _date_range_sql(start, end)
     conn = get_db()
     try:
         return conn.execute(
-            "SELECT * FROM expenses WHERE user_id = ? "
+            f"SELECT * FROM expenses WHERE user_id = ?{date_sql} "
             # date has no time part, so id breaks ties in the order the rows
             # were entered — newest entry of a shared day comes first.
             "ORDER BY date DESC, id DESC",
-            (user_id,),
+            (user_id, *date_params),
         ).fetchall()
     finally:
         conn.close()
 
 
-def get_category_totals_for_user(user_id):
+def get_category_totals_for_user(user_id, start=None, end=None):
     """Return (category, total) rows for the user, largest total first.
+
+    Takes the same optional date window as get_expenses_for_user(), so a page
+    showing both can keep its totals and its rows in agreement.
 
     Only categories the user has actually spent in appear; category is the
     tie-break so equal totals come back in a stable order.
     """
+    date_sql, date_params = _date_range_sql(start, end)
     conn = get_db()
     try:
         return conn.execute(
             "SELECT category, SUM(amount) AS total FROM expenses "
-            "WHERE user_id = ? "
+            f"WHERE user_id = ?{date_sql} "
             "GROUP BY category "
             "ORDER BY total DESC, category ASC",
-            (user_id,),
+            (user_id, *date_params),
         ).fetchall()
     finally:
         conn.close()
